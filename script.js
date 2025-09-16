@@ -1,4 +1,11 @@
-const API_BASE_URL = 'http://127.0.0.1:5000'; // URL base do seu backend Flask
+console.log("carregou")
+
+const btn_chat = document.getElementById('btn-chat')
+
+
+
+
+const API_BASE_URL = 'http://127.0.0.1:5002'; // URL base do seu backend Flask
 
 let isLoggedIn = false; // Variável global para o estado de login
 let currentUser = { // Dados mockados do usuário
@@ -9,7 +16,7 @@ let currentUser = { // Dados mockados do usuário
     fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' // URL de foto padrão
 };
 
-// Função para remover caracteres Markdown
+// Função para remover caracteres Markdown--------------------------------------------------------------------------------------------------
 function stripMarkdown(text) {
     if (!text) return '';
     let cleanedText = text;
@@ -61,6 +68,7 @@ function toggleSidebar() {
     }
 }
 
+// Menu superior---------------------------------------------------------------------------------------------------------------------------
 function moveMenuUnderline(target) {
     const underline = document.getElementById('menuUnderline');
     const menuBar = document.getElementById('menuBar');
@@ -86,6 +94,8 @@ function activateMenuLink(target) {
     }
 }
 
+
+// Tela-----------------------------------------------------------------------------------------------------------------------------------
 function showTela(page) {
     const telaNova = document.getElementById('tela-' + page);
     const telaAtual = document.querySelector('.tela.ativa');
@@ -112,7 +122,7 @@ function showTela(page) {
     }
 }
 
-// Sidebar highlight
+// Menu lateral----------------------------------------------------------------------------------------------------------------------------
 function activateSidebarLink(target) {
     document.querySelectorAll('#sidebar a[data-sidebar]').forEach(link => {
         link.classList.remove('sidebar-link-active');
@@ -122,42 +132,42 @@ function activateSidebarLink(target) {
     }
 }
 
-// // Função para atualizar o botão de Login/Sair
-// function updateAuthButton() {
-//     const authBtn = document.getElementById('authBtn');
-//     const authIcon = document.getElementById('authIcon');
-//     const authText = document.getElementById('authText');
+// // Função para atualizar o botão de Login/Sair------------------------------------------------------------------------------------------
+function updateAuthButton() {
+    const authBtn = document.getElementById('authBtn');
+    const authIcon = document.getElementById('authIcon');
+    const authText = document.getElementById('authText');
 
-//     if (isLoggedIn) {
-//         authBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-//         authBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-//         authIcon.textContent = 'logout';
-//         authText.textContent = 'Sair';
-//         authBtn.onclick = handleLogout;
-//     } else {
-//         authBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-//         authBtn.classList.add('bg-purple-600', 'hover:bg-purple-700'); // Ou qualquer outra cor para "Login"
-//         authIcon.textContent = 'login';
-//         authText.textContent = 'Login';
-//         authBtn.onclick = abrirLogin;
-//     }
-// }
+    if (isLoggedIn) {
+        authBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+        authBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+        authIcon.textContent = 'logout';
+        authText.textContent = 'Sair';
+        authBtn.onclick = handleLogout;
+    } else {
+        authBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        authBtn.classList.add('bg-purple-600', 'hover:bg-purple-700'); // Ou qualquer outra cor para "Login"
+        authIcon.textContent = 'login';
+        authText.textContent = 'Login';
+        authBtn.onclick = abrirLogin;
+    }
+}
 
-// // Função de Logout
-// function handleLogout() {
-//     isLoggedIn = false;
-//     alert('Você foi desconectado!');
-//     updateAuthButton();
-//     // Volta para a tela de início
-//     showTela('inicio');
-//     activateSidebarLink(document.querySelector('#sidebar a[data-sidebar="inicio"]'));
-//     activateMenuLink(document.querySelector('#menuBar .menu-link[data-page="inicio"]'));
-//     // Limpar dados do usuário
-//     currentUser = { id: null, nome: '', email: '', senha: '', fotoUrl: '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)' };
-//     updateProfileDisplay(); // Reseta a tela de perfil
-// }
+// Função de Logout------------------------------------------------------------------------------------------------------------------------
+function handleLogout() {
+    isLoggedIn = false;
+    alert('Você foi desconectado!');
+    updateAuthButton();
+    // Volta para a tela de início
+    showTela('inicio');
+    activateSidebarLink(document.querySelector('#sidebar a[data-sidebar="inicio"]'));
+    activateMenuLink(document.querySelector('#menuBar .menu-link[data-page="inicio"]'));
+    // Limpar dados do usuário
+    currentUser = { id: null, nome: '', email: '', senha: '', fotoUrl: '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)' };
+    updateProfileDisplay(); // Reseta a tela de perfil
+}
 
-// Funções para Modais de Login e Criar Conta
+// Funções de Login e Criar Conta------------------------------------------------------------------------------------------------
 window.abrirLogin = function () {
     document.getElementById('modalLogin').classList.remove('hidden');
 }
@@ -171,7 +181,7 @@ window.fecharCriarConta = function () {
     document.getElementById('modalCriarConta').classList.add('hidden');
 }
 
-// Funções para o NOVO Modal de Edição de Perfil
+// Funções para Edição de Perfil----------------------------------------------------------------------------------------------
 window.abrirEditarPerfil = function () {
     // Pré-preenche o campo de URL da foto e a pré-visualização
     document.getElementById('editFotoUrl').value = currentUser.fotoUrl || '';
@@ -186,7 +196,7 @@ window.fecharEditarPerfil = function () {
     document.getElementById('modalEditarPerfil').classList.add('hidden');
 }
 
-// Função para atualizar as informações na tela de Perfil (já existia e será mantida)
+// Função para atualizar as informações na tela de Perfil 
 function updateProfileDisplay() {
     document.getElementById('profileNome').textContent = currentUser.nome || 'Seu Nome';
     document.getElementById('profileEmail').textContent = currentUser.email || 'seuemail@email.com';
@@ -244,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const active = document.querySelector('#menuBar .menu-link.active');
         if (active) moveMenuUnderline(active);
     });
+})
 
     // // Lógica para os botões de Login e Criar Conta (Modal)
     document.getElementById('entrarBtn').addEventListener('click', async () => {
@@ -669,4 +680,144 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-});
+
+// ===================================
+//      LÓGICA DO CHATBOT - CORRIGIDA
+// ===================================
+        
+    console.log("iniciou aqui")
+
+    const SOCKET_URL = 'http://localhost:5002';
+    let socket = null;
+
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('chat-send-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    function convertMarkdownToHtml(markdownText) {
+        if (!markdownText) return '';
+        let htmlText = markdownText;
+        htmlText = htmlText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        htmlText = htmlText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        htmlText = htmlText.replace(/\n/g, '<br>');
+        return htmlText;
+    }
+
+    function addMessage(sender, text) {
+        const messageContainer = document.createElement('div');
+        const messageBubble = document.createElement('div');
+
+        // ✅ CORREÇÃO AQUI - usando classes CSS personalizadas
+        if (sender === 'user') {
+            messageContainer.className = 'flex justify-end mb-4';
+            messageBubble.className = 'chat-bubble-user';
+        } else {
+            messageContainer.className = 'flex justify-start mb-4';
+            messageBubble.className = 'chat-bubble-bot';
+        }
+
+        messageBubble.innerHTML = convertMarkdownToHtml(text);
+        messageContainer.appendChild(messageBubble);
+        chatMessages.appendChild(messageContainer);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTypingIndicator(show) {
+        typingIndicator.style.display = show ? 'block' : 'none';
+        if (show) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+    
+    function sendMessage() {
+        const messageText = chatInput.value.trim();
+        if (messageText === '' || !socket || !socket.connected) {
+            return;
+        }
+
+        console.log("clicou aqui")
+
+        addMessage('user', messageText);
+        socket.emit('enviar_mensagem', { mensagem: messageText });
+        
+        chatInput.value = '';
+        chatInput.focus();
+        showTypingIndicator(true);
+    }
+
+    function connectToServer() {
+        if (socket) {
+            socket.disconnect();
+        }
+        
+        socket = io(SOCKET_URL);
+
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor de chat!');
+            chatInput.disabled = false;
+            sendButton.disabled = false;
+            chatInput.placeholder = "Digite sua mensagem...";
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Desconectado do servidor.');
+            chatInput.disabled = false;
+            sendButton.disabled = false;
+            chatInput.placeholder = "Desconectado. Recarregue a página.";
+            showTypingIndicator(false);
+        });
+
+        // ✅ Adicionar tratamento de erro de conexão
+        socket.on('connect_error', (error) => {
+            console.error('Erro de conexão:', error);
+            showTypingIndicator(false);
+            addMessage('bot', 'Erro ao conectar com o servidor. Verifique se o backend está rodando na porta 5002.');
+        });
+
+        socket.on('nova_mensagem', (data) => {
+            showTypingIndicator(false);
+            if (data.texto) {
+                addMessage('bot', data.texto);
+            }
+        });
+
+        socket.on('erro', (data) => {
+            console.error('Erro do servidor:', data);
+            showTypingIndicator(false);
+            addMessage('bot', 'Desculpe, ocorreu um erro. Tente novamente.');
+        });
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+    
+    chatInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // ✅ Prevenir comportamento padrão do formulário
+    const chatForm = document.querySelector('#tela-chat .bg-white\\/20');
+    if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+    }
+
+    // Conectar quando acessar a tela de chat
+    const chatLink = document.querySelector('[data-page="chat"]');
+    if (chatLink) {
+        chatLink.addEventListener('click', () => {
+            setTimeout(connectToServer, 100);
+        });
+    }
+
+    // Conectar se já estiver na tela de chat
+    if (document.querySelector('.tela.ativa').id === 'tela-chat') {
+        connectToServer();
+    }
+

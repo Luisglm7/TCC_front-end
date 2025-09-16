@@ -1,4 +1,4 @@
-@import url('[https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap](https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap)');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
         body { font-family: 'Poppins', sans-serif; }
         .tela { display: none; }
@@ -286,3 +286,76 @@
             color: #4b5563; /* gray-600 */
             margin-bottom: 1.5rem;
         }
+
+
+
+
+
+/* ================== */
+/* Estilos do Chat  */
+/* ================== */
+
+/* Estilos para o chat */
+#chat-messages {
+    min-height: 300px;
+    max-height: 500px;
+}
+
+.chat-bubble-user {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 18px 18px 4px 18px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.chat-bubble-bot {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    padding: 12px 16px;
+    border-radius: 18px 18px 18px 4px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.typing-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #888;
+    margin: 0 2px;
+    animation: typingAnimation 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingAnimation {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+}
+
+#chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 12px;
+    color: white;
+    resize: none;
+    min-height: 50px;
+    max-height: 120px;
+}
+
+#chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
