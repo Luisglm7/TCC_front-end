@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de login:', error);
-            alert('Erro ao conectar com o servidor. Tente novamente mais tarde.');
+            alert('Erro ao conectar com o servidor');
         }
     });
 
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Erro ao conectar com a API de cadastro:', error);
-            alert('Erro ao conectar com o servidor. Tente novamente mais tarde.');
+            alert('Erro ao conectar com o servidor');
         }
     });
 
@@ -684,7 +684,7 @@ document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
 
     console.log("iniciou aqui")
 
-    const SOCKET_URL = '[http://127.0.0.1:5002](http://127.0.0.1:5002)';
+    const SOCKET_URL = 'http://127.0.0.1:5002';
     let socket = null;
 
     const chatMessages = document.getElementById('chat-messages');
@@ -770,7 +770,7 @@ document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
         socket.on('connect_error', (error) => {
             console.error('Erro de conexão:', error);
             showTypingIndicator(false);
-            addMessage('bot', 'Erro ao conectar com o servidor. Verifique se o backend está rodando na porta 5002.');
+            addMessage('bot', 'Erro ao conectar com o servidor');
         });
 
         socket.on('nova_mensagem', (data) => {
