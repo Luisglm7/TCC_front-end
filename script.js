@@ -532,149 +532,155 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     });
 
+    //===========================================================================================================================
+    //QUIZ=======================================================================================================================
+    //===========================================================================================================================
+   //QUIZ
+let totalQuestoes = 0;
+let respostasCorretas = 0;
+let respondidas = 0;
 
-    //QUIZ
-    let totalQuestoes = 0;
-    let respostasCorretas = 0;
-    let respondidas = 0;
+document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
+    const tema = document.getElementById("quizInput").value.trim();
+    const output = document.getElementById("quizOutput");
+    const popup = document.getElementById("quizPopup");
+    const scoreDisplay = document.getElementById("quizScore");
+    const restartBtn = document.getElementById("restartQuizBtn");
+    const gerarQuizBtn = document.getElementById("gerarQuizBtn");
 
-    document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
-        const tema = document.getElementById("quizInput").value.trim();
-        const output = document.getElementById("quizOutput");
-        const popup = document.getElementById("quizPopup");
-        const scoreDisplay = document.getElementById("quizScore");
-        const restartBtn = document.getElementById("restartQuizBtn");
-        const gerarQuizBtn = document.getElementById("gerarQuizBtn");
+    if (!tema) {
+        alert("Por favor, digite um tema para gerar o quiz.");
+        return;
+    }
 
-        if (!tema) {
-            alert("Por favor, digite um tema para gerar o quiz.");
-            return;
+    gerarQuizBtn.disabled = true;
+    gerarQuizBtn.textContent = "Gerando...";
+
+    output.innerHTML = "";
+    output.classList.add("hidden");
+    popup.classList.remove("show");
+    respostasCorretas = 0;
+    respondidas = 0;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/quiz`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tema }),
+        });
+
+        const data = await response.json();
+
+        if (data.erro || !data.contedo) {
+            throw new Error(data.erro || "Erro ao gerar quiz.");
         }
 
-        // Desativa botão enquanto carrega
-        gerarQuizBtn.disabled = true;
-        gerarQuizBtn.textContent = "Gerando...";
-
-        output.innerHTML = "";
-        output.classList.add("hidden");
-        popup.classList.remove("show");
-        respostasCorretas = 0;
-        respondidas = 0;
-
+        let quizJson = [];
         try {
-            // ✅ 2. URL DO QUIZ CORRIGIDA
-            const response = await fetch(`${API_BASE_URL}/quiz`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tema }),
-            });
+            let textoLimpo = data.contedo.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+            textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+            quizJson = JSON.parse(textoLimpo);
+        } catch (e) {
+            throw new Error("Erro ao interpretar o JSON gerado pela IA.");
+        }
 
-            const data = await response.json();
+        totalQuestoes = quizJson.length;
 
-            if (data.erro || !data.contedo) {
-                throw new Error(data.erro || "Erro ao gerar quiz.");
-            }
+        quizJson.forEach((questao, index) => {
+            const card = document.createElement("div");
+            card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
 
-            let quizJson = [];
-            try {
-                let textoLimpo = data.contedo.trim();
-                textoLimpo = textoLimpo
-                    .replace(/^```(?:json)?/i, "")
-                    .replace(/```$/, "")
-                    .trim();
-                textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-                quizJson = JSON.parse(textoLimpo);
-            } catch (e) {
-                throw new Error("Erro ao interpretar o JSON gerado pela IA.");
-            }
+            card.innerHTML = `
+                <p class="quiz-question-number">Pergunta ${index + 1}</p>
+                <p class="font-semibold text-lg mb-3">${questao.pergunta}</p>
+            `;
 
-            totalQuestoes = quizJson.length;
+            const opcoesContainer = document.createElement("div");
+            opcoesContainer.className = "space-y-2";
 
-            quizJson.forEach((questao, index) => {
-                const card = document.createElement("div");
-                card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
+            const letras = ["a", "b", "c", "d"];
+            letras.forEach((letra, i) => {
+                const opcaoBtn = document.createElement("button");
+                opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
+                opcaoBtn.textContent = `(${letra}) ${questao.opcoes[i]}`;
+                opcaoBtn.dataset.letra = letra;
+                
+                opcaoBtn.addEventListener("click", () => {
+                    // Impede múltiplos cliques
+                    if (card.classList.contains("card-respondida")) return;
+                    card.classList.add("card-respondida");
+                    respondidas++;
 
-                const numero = document.createElement("p");
-                numero.className = "quiz-question-number";
-                numero.textContent = `Pergunta ${index + 1}`;
-                card.appendChild(numero);
+                    const letraCorreta = questao.resposta_correta;
+                    const letraEscolhida = opcaoBtn.dataset.letra;
+                    
+                    // Encontra o botão da resposta correta
+                    const correctButton = opcoesContainer.querySelector(`button[data-letra="${letraCorreta}"]`);
+                    
+                    // ✅ LÓGICA ATUALIZADA
+                    if (letraEscolhida === letraCorreta) {
+                        respostasCorretas++;
+                        opcaoBtn.classList.add("correct-answer"); // Pinta o clicado de verde
+                    } else {
+                        opcaoBtn.classList.add("wrong-answer"); // Pinta o clicado (errado) de vermelho
+                        correctButton.classList.add("correct-answer"); // Mostra qual era o certo em verde
+                    }
 
-                const pergunta = document.createElement("p");
-                pergunta.className = "font-semibold text-lg mb-3";
-                pergunta.textContent = questao.pergunta;
-                card.appendChild(pergunta);
+                    // Mostra a explicação
+                    const explanationDiv = card.querySelector('.quiz-explanation');
+                    if (explanationDiv) {
+                        explanationDiv.classList.remove('hidden');
+                    }
+                    
+                    // Desativa todos os botões da questão
+                    opcoesContainer.querySelectorAll("button").forEach(btn => btn.disabled = true);
 
-                const opcoesContainer = document.createElement("div");
-                opcoesContainer.className = "space-y-2";
-
-                const letras = ["a", "b", "c", "d"];
-                letras.forEach((letra, i) => {
-                    const opcao = document.createElement("button");
-                    opcao.className =
-                        "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
-                    opcao.textContent = `(${letra}) ${questao.opcoes[i]}`;
-                    opcao.dataset.letra = letra;
-                    opcao.dataset.correta = questao.resposta_correta;
-
-                    opcao.addEventListener("click", () => {
-                        if (card.classList.contains("card-respondida")) return;
-
-                        const botoes = opcoesContainer.querySelectorAll("button");
-                        botoes.forEach((btn) => {
-                            if (btn.dataset.letra === btn.dataset.correta) {
-                                btn.classList.add("correct-answer");
-                            } else {
-                                btn.classList.add("wrong-answer");
-                            }
-                            btn.disabled = true;
-                        });
-
-                        card.classList.add("card-respondida");
-                        respondidas++;
-
-                        if (opcao.dataset.letra === opcao.dataset.correta) {
-                            respostasCorretas++;
-                        }
-
-                        if (respondidas === totalQuestoes) {
-                            scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
-                            popup.classList.add("show");
-                        }
-                    });
-
-                    opcoesContainer.appendChild(opcao);
+                    // Verifica se o quiz terminou
+                    if (respondidas === totalQuestoes) {
+                        scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
+                        popup.classList.add("show");
+                    }
                 });
-
-                card.appendChild(opcoesContainer);
-                output.appendChild(card);
+                opcoesContainer.appendChild(opcaoBtn);
             });
 
-            output.classList.remove("hidden");
-            output.scrollIntoView({ behavior: "smooth" });
+            card.appendChild(opcoesContainer);
+            
+            // Adiciona o container da explicação (inicialmente escondido)
+            const explanationDiv = document.createElement('div');
+            explanationDiv.className = 'quiz-explanation hidden'; // Escondido por padrão
+            explanationDiv.innerHTML = `<strong>Explicação:</strong> ${questao.explicacao || 'Nenhuma explicação fornecida.'}`;
+            card.appendChild(explanationDiv);
 
-            // Recomeçar
-            restartBtn.addEventListener("click", () => {
-                document.getElementById("quizInput").value = "";
-                output.innerHTML = "";
-                output.classList.add("hidden");
-                popup.classList.remove("show");
-                gerarQuizBtn.disabled = false;
-                gerarQuizBtn.textContent = "Gerar Quiz";
-                window.scrollTo({ top: 0, behavior: "smooth" });
-            });
-        } catch (error) {
-            alert("Erro ao gerar quiz: " + error.message);
-            console.error(error);
+            output.appendChild(card);
+        });
+
+        output.classList.remove("hidden");
+        output.scrollIntoView({ behavior: "smooth" });
+        
+        restartBtn.addEventListener("click", () => {
+            document.getElementById("quizInput").value = "";
+            output.innerHTML = "";
+            output.classList.add("hidden");
+            popup.classList.remove("show");
             gerarQuizBtn.disabled = false;
             gerarQuizBtn.textContent = "Gerar Quiz";
-        }
-    });
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }, { once: true }); // Garante que o evento seja adicionado apenas uma vez
+
+    } catch (error) {
+        alert("Erro ao gerar quiz: " + error.message);
+        console.error(error);
+    } finally {
+        gerarQuizBtn.disabled = false;
+        gerarQuizBtn.textContent = "Gerar Quiz";
+    }
+});
 
 
-
-// ===================================
-//      LÓGICA DO CHATBOT
-// ===================================
+// ================================================================================================================================
+// LÓGICA DO CHATBOT==============================================================================================================
+// ================================================================================================================================
 
     console.log("iniciou aqui")
 

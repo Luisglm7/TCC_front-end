@@ -288,6 +288,22 @@
         }
 
 
+        /* Adicione este novo estilo para a explicação */
+.quiz-explanation {
+    margin-top: 1rem; /* 16px */
+    padding: 0.75rem; /* 12px */
+    background-color: #f3e8ff; /* purple-100 */
+    border-left: 4px solid #8b5cf6; /* purple-500 */
+    color: #5b21b6; /* purple-700 */
+    border-radius: 0.25rem; /* 4px */
+    font-size: 0.9rem;
+}
+
+/* Garanta que a classe 'hidden' do TailwindCSS (ou sua própria) esteja disponível */
+.hidden {
+    display: none;
+}
+
 /* ================== */
 /* Estilos do Chat  */
 /* ================== */
