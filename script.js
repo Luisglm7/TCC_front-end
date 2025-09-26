@@ -2,25 +2,13 @@ console.log("carregou")
 
 const btn_chat = document.getElementById('btn-chat')
 
-
-
-
 const API_BASE_URL = 'http://127.0.0.1:5002'; // URL base do seu backend Flask
 
-let isLoggedIn = false; // Variável global para o estado de login
-let currentUser = { // Dados mockados do usuário
-    id: null, // Mudança para null inicialmente
-    nome: '',
-    email: '',
-    senha: '',
-    fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' // URL de foto padrão
-};
-
+// ✅ 1. FUNÇÃO DESCOMENTADA
 // Função para remover caracteres Markdown--------------------------------------------------------------------------------------------------
 function stripMarkdown(text) {
     if (!text) return '';
     let cleanedText = text;
-
     // Remover títulos (###, ##, #)
     cleanedText = cleanedText.replace(/^#{1,6}\s*(.*)$/gm, '$1');
     // Remover negrito (**, __)
@@ -41,9 +29,9 @@ function stripMarkdown(text) {
     cleanedText = cleanedText.replace(/\n\s*\n/g, '\n\n');
     // Remover espaços em branco no início/fim de cada linha
     cleanedText = cleanedText.split('\n').map(line => line.trim()).join('\n');
-
     return cleanedText.trim();
 }
+
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -469,7 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
         finally {
         // ✅ Reativa o botão após o processo (sucesso ou erro)
         corrigirTextoBtn.disabled = false;
-        corrigirTextoBtn.textContent = "Gerar Resumo";
+        // ✅ 3. TEXTO DO BOTÃO CORRIGIDO
+        corrigirTextoBtn.textContent = "Corrigir Texto";
     }
     });
 
@@ -538,7 +527,8 @@ document.addEventListener('DOMContentLoaded', () => {
         finally {
         // ✅ Reativa o botão após o processo (sucesso ou erro)
         gerarFlashcardsBtn.disabled = false;
-        gerarFlashcardsBtn.textContent = "Gerar Resumo";
+        // ✅ 3. TEXTO DO BOTÃO CORRIGIDO
+        gerarFlashcardsBtn.textContent = "Gerar Flashcards";
     }
     });
 
@@ -572,7 +562,8 @@ document.addEventListener('DOMContentLoaded', () => {
         respondidas = 0;
 
         try {
-            const response = await fetch("http://localhost:5000/quiz", {
+            // ✅ 2. URL DO QUIZ CORRIGIDA
+            const response = await fetch(`${API_BASE_URL}/quiz`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ tema }),
@@ -682,12 +673,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ===================================
-//      LÓGICA DO CHATBOT - CORRIGIDA
+//      LÓGICA DO CHATBOT
 // ===================================
-        
+
     console.log("iniciou aqui")
 
-    const SOCKET_URL = 'http://localhost:5002';
+    const SOCKET_URL = '[http://127.0.0.1:5002](http://127.0.0.1:5002)';
     let socket = null;
 
     const chatMessages = document.getElementById('chat-messages');
@@ -708,7 +699,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageContainer = document.createElement('div');
         const messageBubble = document.createElement('div');
 
-        // ✅ CORREÇÃO AQUI - usando classes CSS personalizadas
         if (sender === 'user') {
             messageContainer.className = 'flex justify-end mb-4';
             messageBubble.className = 'chat-bubble-user';
@@ -747,6 +737,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function connectToServer() {
+        if (socket && socket.connected) {
+             return; // Já está conectado
+        }
         if (socket) {
             socket.disconnect();
         }
@@ -762,13 +755,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('disconnect', () => {
             console.log('Desconectado do servidor.');
-            chatInput.disabled = false;
-            sendButton.disabled = false;
+            chatInput.disabled = true;
+            sendButton.disabled = true;
             chatInput.placeholder = "Desconectado. Recarregue a página.";
             showTypingIndicator(false);
         });
 
-        // ✅ Adicionar tratamento de erro de conexão
         socket.on('connect_error', (error) => {
             console.error('Erro de conexão:', error);
             showTypingIndicator(false);
@@ -799,10 +791,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ✅ Prevenir comportamento padrão do formulário
     const chatForm = document.querySelector('#tela-chat .bg-white\\/20');
     if (chatForm) {
-        chatForm.addEventListener('submit', (e) => {
+        chatForm.parentElement.addEventListener('submit', (e) => {
             e.preventDefault();
             sendMessage();
         });
@@ -812,12 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatLink = document.querySelector('[data-page="chat"]');
     if (chatLink) {
         chatLink.addEventListener('click', () => {
-            setTimeout(connectToServer, 100);
+            // Um pequeno delay para garantir que a tela de chat já está visível
+            setTimeout(connectToServer, 100); 
         });
     }
-
-    // Conectar se já estiver na tela de chat
-    if (document.querySelector('.tela.ativa').id === 'tela-chat') {
-        connectToServer();
-    }
-
