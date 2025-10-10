@@ -3,31 +3,32 @@ console.log("carregou")
 const btn_chat = document.getElementById('btn-chat')
 
 const API_BASE_URL = 'http://127.0.0.1:5002'; // URL base do seu backend Flask
+const SOCKET_URL = 'http://127.0.0.1:5002';
+let socket = null;
 
-// ✅ 1. FUNÇÃO DESCOMENTADA
+// Objeto para guardar informações do usuário logado
+let currentUser = {
+    id: null,
+    nome: 'Visitante',
+    email: 'Faça login para continuar',
+    plano: 'freemium', // Plano padrão
+    fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
+};
+
 // Função para remover caracteres Markdown--------------------------------------------------------------------------------------------------
 function stripMarkdown(text) {
     if (!text) return '';
     let cleanedText = text;
-    // Remover títulos (###, ##, #)
     cleanedText = cleanedText.replace(/^#{1,6}\s*(.*)$/gm, '$1');
-    // Remover negrito (**, __)
     cleanedText = cleanedText.replace(/\*\*(.*?)\*\*/g, '$1');
     cleanedText = cleanedText.replace(/__(.*?)__/g, '$1');
-    // Remover itálico (*, _)
     cleanedText = cleanedText.replace(/\*(.*?)\*/g, '$1');
     cleanedText = cleanedText.replace(/_(.*?)_/g, '$1');
-    // Remover links Markdown ([texto](url)) - mantém apenas o texto
     cleanedText = cleanedText.replace(/\[(.*?)\]\(.*?\)/g, '$1');
-    // Remover listas (- , *, +)
     cleanedText = cleanedText.replace(/^[-\*\+]\s*/gm, '');
-    // Remover blocos de código (```)
     cleanedText = cleanedText.replace(/```[\s\S]*?```/g, '');
-    // Remover blocos de citação (>)
     cleanedText = cleanedText.replace(/^>\s*/gm, '');
-    // Substituir quebras de linha múltiplas por uma única
     cleanedText = cleanedText.replace(/\n\s*\n/g, '\n\n');
-    // Remover espaços em branco no início/fim de cada linha
     cleanedText = cleanedText.split('\n').map(line => line.trim()).join('\n');
     return cleanedText.trim();
 }
@@ -61,7 +62,7 @@ function moveMenuUnderline(target) {
     const underline = document.getElementById('menuUnderline');
     const menuBar = document.getElementById('menuBar');
     if (!underline || !menuBar || !target) {
-        underline.style.width = `0px`; // Esconde o underline
+        if(underline) underline.style.width = `0px`; // Esconde o underline
         return;
     }
     const menuRect = menuBar.getBoundingClientRect();
@@ -85,23 +86,11 @@ function activateMenuLink(target) {
 
 // Tela-----------------------------------------------------------------------------------------------------------------------------------
 function showTela(page) {
+    document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa', 'fade-in'));
     const telaNova = document.getElementById('tela-' + page);
-    const telaAtual = document.querySelector('.tela.ativa');
-
-    if (telaAtual === telaNova) return;
-
-    if (telaAtual) {
-        telaAtual.classList.remove('fade-in');
-        telaAtual.classList.add('fade-out');
-        setTimeout(() => {
-            telaAtual.classList.remove('ativa', 'fade-out');
-            telaAtual.style.display = 'none';
-            telaNova.style.display = 'block';
-            telaNova.classList.add('fade-in', 'ativa');
-        }, 400);
-    } else {
-        telaNova.style.display = 'block';
-        telaNova.classList.add('fade-in', 'ativa');
+    
+    if (telaNova) {
+        telaNova.classList.add('ativa', 'fade-in');
     }
 
     // Ao mostrar a tela de perfil, atualiza os dados (já existente)
@@ -120,11 +109,35 @@ function activateSidebarLink(target) {
     }
 }
 
-// // Função para atualizar o botão de Login/Sair------------------------------------------------------------------------------------------
+// Função para atualizar a UI com base no plano
+function updateUIForPlan() {
+    const plan = currentUser.plano;
+    const isPremium = plan === 'premium';
+
+    document.querySelectorAll('.premium-feature').forEach(el => {
+        el.classList.toggle('hidden', !isPremium);
+    });
+
+    document.getElementById('quizSetupFreemium').classList.toggle('hidden', isPremium);
+    document.getElementById('quizSetupPremium').classList.toggle('hidden', !isPremium);
+
+    document.getElementById('flashcardSetupFreemium').classList.toggle('hidden', isPremium);
+    document.getElementById('flashcardSetupPremium').classList.toggle('hidden', !isPremium);
+
+    updateAuthButton();
+    updateProfileDisplay();
+}
+
+
+// Função para atualizar o botão de Login/Sair
 function updateAuthButton() {
     const authBtn = document.getElementById('authBtn');
     const authIcon = document.getElementById('authIcon');
     const authText = document.getElementById('authText');
+    const welcomeButtons = document.getElementById('welcome-buttons');
+    const btnEditarPerfil = document.getElementById('btnEditarPerfil');
+    
+    const isLoggedIn = !!currentUser.id;
 
     if (isLoggedIn) {
         authBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
@@ -132,30 +145,47 @@ function updateAuthButton() {
         authIcon.textContent = 'logout';
         authText.textContent = 'Sair';
         authBtn.onclick = handleLogout;
+        if(welcomeButtons) welcomeButtons.classList.add('hidden');
+        if(btnEditarPerfil) btnEditarPerfil.classList.remove('hidden');
     } else {
         authBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-        authBtn.classList.add('bg-purple-600', 'hover:bg-purple-700'); // Ou qualquer outra cor para "Login"
+        authBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
         authIcon.textContent = 'login';
         authText.textContent = 'Login';
         authBtn.onclick = abrirLogin;
+        if(welcomeButtons) welcomeButtons.classList.remove('hidden');
+        if(btnEditarPerfil) btnEditarPerfil.classList.add('hidden');
     }
 }
 
-// Função de Logout------------------------------------------------------------------------------------------------------------------------
+// Função de Logout
 function handleLogout() {
-    isLoggedIn = false;
-    alert('Você foi desconectado!');
-    updateAuthButton();
-    // Volta para a tela de início
+    sessionStorage.removeItem('currentUser');
+    currentUser = { id: null, nome: 'Visitante', email: 'Faça login para continuar', plano: 'freemium', fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' };
+    updateUIForPlan();
     showTela('inicio');
-    activateSidebarLink(document.querySelector('#sidebar a[data-sidebar="inicio"]'));
-    activateMenuLink(document.querySelector('#menuBar .menu-link[data-page="inicio"]'));
-    // Limpar dados do usuário
-    currentUser = { id: null, nome: '', email: '', senha: '', fotoUrl: '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)' };
-    updateProfileDisplay(); // Reseta a tela de perfil
+    alert('Você foi desconectado!');
 }
 
-// Funções de Login e Criar Conta------------------------------------------------------------------------------------------------
+// Carrega usuário da sessão
+function loadUserFromSession() {
+    const storedUser = sessionStorage.getItem('currentUser');
+    if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        currentUser = {
+            id: userData.id_aluno,
+            nome: userData.nome,
+            email: userData.email,
+            plano: userData.plano,
+            fotoUrl: userData.url_foto || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
+        };
+    } else {
+        currentUser = { id: null, nome: 'Visitante', email: 'Faça login para continuar', plano: 'freemium', fotoUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' };
+    }
+    updateUIForPlan();
+}
+
+// Funções de Login e Criar Conta
 window.abrirLogin = function () {
     document.getElementById('modalLogin').classList.remove('hidden');
 }
@@ -169,15 +199,13 @@ window.fecharCriarConta = function () {
     document.getElementById('modalCriarConta').classList.add('hidden');
 }
 
-// Funções para Edição de Perfil----------------------------------------------------------------------------------------------
+// Funções para Edição de Perfil
 window.abrirEditarPerfil = function () {
-    // Pré-preenche o campo de URL da foto e a pré-visualização
     document.getElementById('editFotoUrl').value = currentUser.fotoUrl || '';
-    document.getElementById('editFotoPreview').src = currentUser.fotoUrl || '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)';
-    // Pré-preenche os outros campos
+    document.getElementById('editFotoPreview').src = currentUser.fotoUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     document.getElementById('editNome').value = currentUser.nome;
     document.getElementById('editEmail').value = currentUser.email;
-    document.getElementById('editSenha').value = ''; // Sempre limpa a senha no input de edição
+    document.getElementById('editSenha').value = '';
     document.getElementById('modalEditarPerfil').classList.remove('hidden');
 }
 window.fecharEditarPerfil = function () {
@@ -188,17 +216,17 @@ window.fecharEditarPerfil = function () {
 function updateProfileDisplay() {
     document.getElementById('profileNome').textContent = currentUser.nome || 'Seu Nome';
     document.getElementById('profileEmail').textContent = currentUser.email || 'seuemail@email.com';
-    document.getElementById('profileFoto').src = currentUser.fotoUrl || '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)';
+    document.getElementById('profileFoto').src = currentUser.fotoUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 }
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicialização da Sidebar e Topbar
+    loadUserFromSession();
+
     document.getElementById('sidebar').classList.add('sidebar-visible');
     document.getElementById('topbar').classList.add('topbar-visible');
     document.getElementById('mainContent').classList.add('ml-64');
 
-    // Ativar link "Início" ao carregar a página
     const initialSidebarLink = document.querySelector('#sidebar a[data-sidebar="inicio"]');
     if (initialSidebarLink) {
         activateSidebarLink(initialSidebarLink);
@@ -209,42 +237,34 @@ document.addEventListener('DOMContentLoaded', () => {
         showTela('inicio');
     }
 
-    // // Atualiza o botão de autenticação ao carregar a página
-    // updateAuthButton();
-
-    // Event listeners para os links da Topbar
     document.querySelectorAll('#menuBar .menu-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             activateMenuLink(link);
-            // Desativa qualquer link ativo na sidebar
             activateSidebarLink(null);
             const page = link.getAttribute('data-page');
             showTela(page);
         });
     });
 
-    // Event listeners para os links da Sidebar
     const sidebarLinks = document.querySelectorAll('#sidebar a[data-sidebar]');
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function (e) {
-            e.preventDefault(); // Impede o comportamento padrão de link
+            e.preventDefault();
             activateSidebarLink(this);
-            // Desativa qualquer link ativo na topbar e remove o underline
             activateMenuLink(null);
             const page = this.getAttribute('data-sidebar');
             showTela(page);
         });
     });
 
-    // Ajustar underline ao redimensionar
     window.addEventListener('resize', () => {
         const active = document.querySelector('#menuBar .menu-link.active');
         if (active) moveMenuUnderline(active);
     });
-})
 
-    // // Lógica para os botões de Login e Criar Conta (Modal)
+
+    // Lógica para os botões de Login e Criar Conta (Modal)
     document.getElementById('entrarBtn').addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value;
         const senha = document.getElementById('loginSenha').value;
@@ -260,19 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (response.ok) {
                 alert(data.message);
+                // AQUI ESTÁ A CORREÇÃO PRINCIPAL: ACESSAR data.user
+                sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                loadUserFromSession(); // Carrega o novo usuário e atualiza a UI
                 fecharLogin();
-                isLoggedIn = true;
-                updateAuthButton();
-                // Carrega os dados do usuário após o login
-                currentUser.id = data.id;
-                currentUser.nome = data.nome;
-                currentUser.email = data.email;
-                currentUser.senha = senha; // Temporário, em produção não armazene a senha no frontend.
-                currentUser.fotoUrl = data.foto_url || '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)';
-                updateProfileDisplay(); // Atualiza display de perfil
-                showTela('inicio'); // Ou redireciona para um dashboard
-                activateSidebarLink(document.querySelector('#sidebar a[data-sidebar="inicio"]'));
-                activateMenuLink(document.querySelector('#menuBar .menu-link[data-page="inicio"]'));
+                showTela('inicio');
             } else {
                 alert(data.error || 'Erro ao fazer login. Verifique suas credenciais.');
             }
@@ -296,16 +308,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_BASE_URL}/cadastrar_usuario`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nome, email, senha }),
             });
             const data = await response.json();
             if (response.ok) {
                 alert(data.message);
                 fecharCriarConta();
-                abrirLogin(); // Opcional: Abrir modal de login automaticamente
+                abrirLogin();
             } else {
                 alert(data.error || 'Erro ao criar conta.');
             }
@@ -315,19 +325,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Lógica para o botão "Editar Perfil" no card de perfil
+    // Lógica para o botão "Editar Perfil"
     document.getElementById('btnEditarPerfil').addEventListener('click', () => {
         abrirEditarPerfil();
     });
 
-    // Lógica para o botão "Salvar Alterações" no modal de Editar Perfil
     document.getElementById('salvarEdicaoBtn').addEventListener('click', async () => {
         const novoNome = document.getElementById('editNome').value;
         const novoEmail = document.getElementById('editEmail').value;
-        const novaSenha = document.getElementById('editSenha').value; // Pode estar vazia
-        const novaFotoUrl = document.getElementById('editFotoUrl').value; // <-- Obtém a nova URL da foto
+        const novaSenha = document.getElementById('editSenha').value;
+        const novaFotoUrl = document.getElementById('editFotoUrl').value;
 
-        // Validação básica
         if (!novoNome || !novoEmail) {
             alert('Nome e E-mail não podem ser vazios.');
             return;
@@ -336,36 +344,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateData = {
             nome: novoNome,
             email: novoEmail,
-            foto_url: novaFotoUrl // <-- Inclui a URL da foto no payload
+            url_foto: novaFotoUrl // CORREÇÃO: Usar url_foto como o backend espera
         };
-        if (novaSenha) { // Inclui a senha apenas se não estiver vazia
+        if (novaSenha) {
             updateData.senha = novaSenha;
         }
 
         try {
-            if (!isLoggedIn || !currentUser.id) { // Garante que há um usuário logado
+            if (!currentUser.id) {
                 alert('Nenhum usuário logado para editar.');
                 return;
             }
 
             const response = await fetch(`${API_BASE_URL}/editar_usuario/${currentUser.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updateData),
             });
             const data = await response.json();
             if (response.ok) {
                 alert(data.message);
-                // Atualiza os dados locais do usuário
                 currentUser.nome = novoNome;
                 currentUser.email = novoEmail;
-                currentUser.fotoUrl = novaFotoUrl; // <-- Atualiza a foto localmente
-                if (novaSenha) {
-                    currentUser.senha = novaSenha; // Atualiza a senha localmente
-                }
-                updateProfileDisplay(); // Atualiza a tela de perfil (se houver, já deve pegar do currentUser)
+                currentUser.fotoUrl = novaFotoUrl;
+                // Atualiza o sessionStorage para manter os dados
+                const sessionUser = JSON.parse(sessionStorage.getItem('currentUser'));
+                sessionUser.nome = novoNome;
+                sessionUser.email = novoEmail;
+                sessionUser.url_foto = novaFotoUrl;
+                sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
+                
+                updateProfileDisplay();
                 fecharEditarPerfil();
             } else {
                 alert(data.error || 'Erro ao salvar alterações.');
@@ -376,15 +385,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Event listener para pré-visualizar a foto no modal de edição em tempo real
     document.getElementById('editFotoUrl').addEventListener('input', (e) => {
         const imgPreview = document.getElementById('editFotoPreview');
         const url = e.target.value;
-        // Tenta carregar a imagem para pré-visualização, caso contrário usa a padrão
         if (url) {
             imgPreview.src = url;
         } else {
-            imgPreview.src = '[https://cdn-icons-png.flaticon.com/512/3135/3135715.png](https://cdn-icons-png.flaticon.com/512/3135/3135715.png)'; // Fallback
+            imgPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
         }
     });
 
@@ -392,300 +399,241 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Gerar Resumo
     document.getElementById('gerarResumoBtn').addEventListener('click', async () => {
+        if (!currentUser.id) return alert("Você precisa estar logado.");
         const tema = document.getElementById('resumoInput').value;
-        if (!tema) {
-            alert('Por favor, digite um tema.');
-            return;
-        }
-        // ⛔️ Desativa o botão durante a geração
-        gerarResumoBtn.disabled = true;
-        gerarResumoBtn.textContent = "Gerando...";
+        if (!tema) return alert('Por favor, digite um tema.');
+        
+        const btn = document.getElementById('gerarResumoBtn');
+        btn.disabled = true;
+        btn.textContent = "Gerando...";
 
         try {
             const response = await fetch(`${API_BASE_URL}/resumo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tema })
+                body: JSON.stringify({ tema, id_aluno: currentUser.id })
             });
             const data = await response.json();
             if (response.ok) {
                 document.getElementById('resumoTitulo').textContent = `Resumo sobre: ${stripMarkdown(data.assunto)}`;
-                document.getElementById('resumoConteudo').innerHTML = stripMarkdown(data.contedo).replace(/\n/g, '<br>');
+                document.getElementById('resumoConteudo').innerHTML = stripMarkdown(data.conteudo).replace(/\n/g, '<br>');
                 document.getElementById('resumoOutput').classList.remove('hidden');
             } else {
                 alert(data.error || 'Erro ao gerar resumo.');
             }
         } catch (error) {
-            console.error('Erro ao conectar com a API de resumo:', error);
-            alert('Erro ao conectar com o servidor para gerar resumo.');
+            console.error('Erro API de resumo:', error);
+            alert('Erro ao conectar com o servidor.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Gerar Resumo";
         }
-        finally {
-        // ✅ Reativa o botão após o processo (sucesso ou erro)
-        gerarResumoBtn.disabled = false;
-        gerarResumoBtn.textContent = "Gerar Resumo";
-    }
     });
 
     // Corrigir Texto
     document.getElementById('corrigirTextoBtn').addEventListener('click', async () => {
+        if (!currentUser.id) return alert("Você precisa estar logado.");
         const tema = document.getElementById('correcaoTemaInput').value;
         const texto = document.getElementById('correcaoTextoInput').value;
-        if (!tema || !texto) {
-            alert('Por favor, preencha o tema e o texto para correção.');
-            return;
-        }
-        // ⛔️ Desativa o botão durante a geração
-        corrigirTextoBtn.disabled = true;
-        corrigirTextoBtn.textContent = "Gerando...";
+        if (!tema || !texto) return alert('Preencha o tema e o texto.');
+        
+        const btn = document.getElementById('corrigirTextoBtn');
+        btn.disabled = true;
+        btn.textContent = "Corrigindo...";
         try {
             const response = await fetch(`${API_BASE_URL}/correcao`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tema, texto })
+                body: JSON.stringify({ tema, texto, id_aluno: currentUser.id })
             });
             const data = await response.json();
             if (response.ok) {
-                document.getElementById('correcaoConteudo').innerHTML = stripMarkdown(data.contedo).replace(/\n/g, '<br>');
+                document.getElementById('correcaoConteudo').innerHTML = stripMarkdown(data.correcao).replace(/\n/g, '<br>');
                 document.getElementById('correcaoOutput').classList.remove('hidden');
             } else {
                 alert(data.error || 'Erro ao corrigir texto.');
             }
         } catch (error) {
-            console.error('Erro ao conectar com a API de correção:', error);
-            alert('Erro ao conectar com o servidor para correção.');
+            console.error('Erro API de correção:', error);
+            alert('Erro ao conectar com o servidor.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Corrigir Texto";
         }
-        finally {
-        // ✅ Reativa o botão após o processo (sucesso ou erro)
-        corrigirTextoBtn.disabled = false;
-        // ✅ 3. TEXTO DO BOTÃO CORRIGIDO
-        corrigirTextoBtn.textContent = "Corrigir Texto";
-    }
     });
 
     // Gerar Flashcards
     document.getElementById('gerarFlashcardsBtn').addEventListener('click', async () => {
-        const tema = document.getElementById('flashcardInput').value;
-        if (!tema) {
-            alert('Por favor, digite um tema');
-            return;
+        if (!currentUser.id) return alert("Você precisa estar logado.");
+        
+        let payload = { id_aluno: currentUser.id };
+        if (currentUser.plano === 'premium') {
+            const tema = document.getElementById('flashcardInput').value;
+            if (!tema) return alert("Digite um tema para os flashcards.");
+            payload.tema = tema;
+        } else {
+            payload.category = document.getElementById('flashcardCategory').value;
         }
-        // ⛔️ Desativa o botão durante a geração
-        gerarFlashcardsBtn.disabled = true;
-        gerarFlashcardsBtn.textContent = "Gerando...";
+
+        const btn = document.getElementById('gerarFlashcardsBtn');
+        btn.disabled = true;
+        btn.textContent = "Gerando...";
         try {
             const response = await fetch(`${API_BASE_URL}/flashcard`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tema })
+                body: JSON.stringify(payload)
             });
             const data = await response.json();
+            const container = document.getElementById('flashcardsContainer');
+            container.innerHTML = '';
+
             if (response.ok) {
-                const flashcardsContainer = document.getElementById('flashcardsContainer');
-                flashcardsContainer.innerHTML = ''; // Limpa flashcards anteriores
-
-                // A resposta do backend para flashcard é um texto único com a estrutura
-                // Pergunta: [pergunta] Resposta: [resposta] Explicação: [explicação]
-                const flashcardTexts = data.contedo.split('Pergunta:').filter(text => text.trim() !== '');
-
-                flashcardTexts.forEach(fcText => {
-                    const parts = fcText.split('Resposta:');
-                    if (parts.length > 1) {
-                        const pergunta = stripMarkdown(parts[0].trim()); // Remove Markdown
-                        const respostaExp = parts[1].split('Explicação:');
-                        const resposta = stripMarkdown(respostaExp[0].trim()); // Remove Markdown
-                        const explicacao = respostaExp.length > 1 ? stripMarkdown(respostaExp[1].trim()) : ''; // Remove Markdown
-
-                        const flashcardDiv = document.createElement('div');
-                        flashcardDiv.className = 'flashcard bg-white rounded-xl shadow-lg cursor-pointer perspective';
-                        // Adiciona evento de click para virar
-                        flashcardDiv.addEventListener('click', function () {
-                            this.classList.toggle('flipped');
-                        });
-                        flashcardDiv.innerHTML = `
-                            <div class="flashcard-inner">
-                                <div class="flashcard-front">
-                                    <span class="text-purple-800 text-lg font-semibold">${pergunta}</span>
-                                </div>
-                                <div class="flashcard-back">
-                                    <div class="flex flex-col items-center p-4">
-                                        <span class="text-pink-600 font-bold">${resposta}</span>
-                                        <span class="text-gray-700 text-sm mt-2">${explicacao}</span>
-                                    </div>
+                // O backend agora retorna JSON para ambos os planos
+                data.forEach(fc => {
+                    const div = document.createElement('div');
+                    div.className = 'flashcard';
+                    div.onclick = () => div.classList.toggle('flipped');
+                    div.innerHTML = `
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front"><span class="font-semibold">${fc.pergunta}</span></div>
+                            <div class="flashcard-back">
+                                <div class="flex flex-col items-center text-center p-4">
+                                    <span class="font-bold text-pink-600">${fc.resposta}</span>
+                                    <span class="text-sm mt-2">${fc.explicacao || ''}</span>
                                 </div>
                             </div>
-                        `;
-                        flashcardsContainer.appendChild(flashcardDiv);
-                    }
+                        </div>`;
+                    container.appendChild(div);
                 });
             } else {
                 alert(data.error || 'Erro ao gerar flashcards.');
             }
         } catch (error) {
-            console.error('Erro ao conectar com a API de flashcards:', error);
-            alert('Erro ao conectar com o servidor para gerar flashcards.');
+            console.error('Erro API de flashcards:', error);
+            alert('Erro ao conectar com o servidor.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Gerar Flashcards";
         }
-        finally {
-        // ✅ Reativa o botão após o processo (sucesso ou erro)
-        gerarFlashcardsBtn.disabled = false;
-        // ✅ 3. TEXTO DO BOTÃO CORRIGIDO
-        gerarFlashcardsBtn.textContent = "Gerar Flashcards";
-    }
     });
 
-    //===========================================================================================================================
-    //QUIZ=======================================================================================================================
-    //===========================================================================================================================
-   //QUIZ
-let totalQuestoes = 0;
-let respostasCorretas = 0;
-let respondidas = 0;
+    // Gerar Quiz
+    document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
+        if (!currentUser.id) return alert("Você precisa estar logado.");
 
-document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
-    const tema = document.getElementById("quizInput").value.trim();
-    const output = document.getElementById("quizOutput");
-    const popup = document.getElementById("quizPopup");
-    const scoreDisplay = document.getElementById("quizScore");
-    const restartBtn = document.getElementById("restartQuizBtn");
-    const gerarQuizBtn = document.getElementById("gerarQuizBtn");
-
-    if (!tema) {
-        alert("Por favor, digite um tema para gerar o quiz.");
-        return;
-    }
-
-    gerarQuizBtn.disabled = true;
-    gerarQuizBtn.textContent = "Gerando...";
-
-    output.innerHTML = "";
-    output.classList.add("hidden");
-    popup.classList.remove("show");
-    respostasCorretas = 0;
-    respondidas = 0;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/quiz`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tema }),
-        });
-
-        const data = await response.json();
-
-        if (data.erro || !data.contedo) {
-            throw new Error(data.erro || "Erro ao gerar quiz.");
+        let payload = { id_aluno: currentUser.id };
+        if (currentUser.plano === 'premium') {
+            const tema = document.getElementById('quizInput').value;
+            if (!tema) return alert("Digite um tema para o quiz.");
+            payload.tema = tema;
+        } else {
+            payload.category = document.getElementById('quizCategory').value;
         }
 
-        let quizJson = [];
+        const btn = document.getElementById("gerarQuizBtn");
+        btn.disabled = true;
+        btn.textContent = "Gerando...";
+
+        const output = document.getElementById("quizOutput");
+        const popup = document.getElementById("quizPopup");
+        output.innerHTML = "";
+        output.classList.add("hidden");
+        popup.classList.remove("show");
+
         try {
-            let textoLimpo = data.contedo.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-            textoLimpo = textoLimpo.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-            quizJson = JSON.parse(textoLimpo);
-        } catch (e) {
-            throw new Error("Erro ao interpretar o JSON gerado pela IA.");
-        }
+            const response = await fetch(`${API_BASE_URL}/quiz`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            
+            if (!response.ok) {
+                 const errData = await response.json();
+                 throw new Error(errData.error || "Ocorreu um erro no servidor");
+            }
 
-        totalQuestoes = quizJson.length;
+            const quizJson = await response.json();
+            
+            let totalQuestoes = quizJson.length;
+            let respostasCorretas = 0;
+            let respondidas = 0;
+            const scoreDisplay = document.getElementById("quizScore");
+            
+            quizJson.forEach((questao, index) => {
+                const card = document.createElement("div");
+                card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
+                card.innerHTML = `<p class="quiz-question-number">Pergunta ${index + 1}</p><p class="font-semibold text-lg mb-3">${questao.question || questao.pergunta}</p>`;
 
-        quizJson.forEach((questao, index) => {
-            const card = document.createElement("div");
-            card.className = "mb-6 p-4 bg-white rounded-lg shadow w-full card";
-
-            card.innerHTML = `
-                <p class="quiz-question-number">Pergunta ${index + 1}</p>
-                <p class="font-semibold text-lg mb-3">${questao.pergunta}</p>
-            `;
-
-            const opcoesContainer = document.createElement("div");
-            opcoesContainer.className = "space-y-2";
-
-            const letras = ["a", "b", "c", "d"];
-            letras.forEach((letra, i) => {
-                const opcaoBtn = document.createElement("button");
-                opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
-                opcaoBtn.textContent = `(${letra}) ${questao.opcoes[i]}`;
-                opcaoBtn.dataset.letra = letra;
+                const opcoesContainer = document.createElement("div");
+                opcoesContainer.className = "space-y-2";
                 
-                opcaoBtn.addEventListener("click", () => {
-                    // Impede múltiplos cliques
-                    if (card.classList.contains("card-respondida")) return;
-                    card.classList.add("card-respondida");
-                    respondidas++;
+                const opcoes = questao.options || questao.opcoes;
+                const respostaCorreta = questao.correctAnswer || questao.resposta_correta;
 
-                    const letraCorreta = questao.resposta_correta;
-                    const letraEscolhida = opcaoBtn.dataset.letra;
+                opcoes.forEach((opcaoTexto) => {
+                    const opcaoBtn = document.createElement("button");
+                    opcaoBtn.className = "quiz-option w-full text-left p-3 border rounded-lg hover:bg-gray-100 transition";
+                    opcaoBtn.textContent = opcaoTexto;
                     
-                    // Encontra o botão da resposta correta
-                    const correctButton = opcoesContainer.querySelector(`button[data-letra="${letraCorreta}"]`);
-                    
-                    // ✅ LÓGICA ATUALIZADA
-                    if (letraEscolhida === letraCorreta) {
-                        respostasCorretas++;
-                        opcaoBtn.classList.add("correct-answer"); // Pinta o clicado de verde
-                    } else {
-                        opcaoBtn.classList.add("wrong-answer"); // Pinta o clicado (errado) de vermelho
-                        correctButton.classList.add("correct-answer"); // Mostra qual era o certo em verde
-                    }
+                    opcaoBtn.addEventListener("click", () => {
+                        if (card.classList.contains("card-respondida")) return;
+                        card.classList.add("card-respondida");
+                        respondidas++;
 
-                    // Mostra a explicação
-                    const explanationDiv = card.querySelector('.quiz-explanation');
-                    if (explanationDiv) {
-                        explanationDiv.classList.remove('hidden');
-                    }
-                    
-                    // Desativa todos os botões da questão
-                    opcoesContainer.querySelectorAll("button").forEach(btn => btn.disabled = true);
-
-                    // Verifica se o quiz terminou
-                    if (respondidas === totalQuestoes) {
-                        scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
-                        popup.classList.add("show");
-                    }
+                        if (opcaoBtn.textContent === respostaCorreta) {
+                            respostasCorretas++;
+                            opcaoBtn.classList.add("correct-answer");
+                        } else {
+                            opcaoBtn.classList.add("wrong-answer");
+                            const corretaBtn = Array.from(opcoesContainer.children).find(btn => btn.textContent === respostaCorreta);
+                            if(corretaBtn) corretaBtn.classList.add("correct-answer");
+                        }
+                        
+                        opcoesContainer.querySelectorAll("button").forEach(b => b.disabled = true);
+                        
+                        const explanationDiv = card.querySelector('.quiz-explanation');
+                        if (explanationDiv) explanationDiv.classList.remove('hidden');
+                        
+                        if (respondidas === totalQuestoes) {
+                            scoreDisplay.textContent = `Você acertou ${respostasCorretas} de ${totalQuestoes} perguntas!`;
+                            popup.classList.add("show");
+                        }
+                    });
+                    opcoesContainer.appendChild(opcaoBtn);
                 });
-                opcoesContainer.appendChild(opcaoBtn);
+
+                card.appendChild(opcoesContainer);
+
+                if(questao.explicacao){
+                    const explanationDiv = document.createElement('div');
+                    explanationDiv.className = 'quiz-explanation hidden';
+                    explanationDiv.innerHTML = `<strong>Explicação:</strong> ${questao.explicacao}`;
+                    card.appendChild(explanationDiv);
+                }
+
+                output.appendChild(card);
             });
 
-            card.appendChild(opcoesContainer);
+            output.classList.remove("hidden");
             
-            // Adiciona o container da explicação (inicialmente escondido)
-            const explanationDiv = document.createElement('div');
-            explanationDiv.className = 'quiz-explanation hidden'; // Escondido por padrão
-            explanationDiv.innerHTML = `<strong>Explicação:</strong> ${questao.explicacao || 'Nenhuma explicação fornecida.'}`;
-            card.appendChild(explanationDiv);
+        } catch (error) {
+            alert("Erro ao gerar quiz: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Gerar Quiz";
+        }
+    });
+    
+    document.getElementById("restartQuizBtn").addEventListener("click", () => {
+        document.getElementById("quizOutput").innerHTML = "";
+        document.getElementById("quizOutput").classList.add("hidden");
+        document.getElementById("quizPopup").classList.remove("show");
+    });
 
-            output.appendChild(card);
-        });
-
-        output.classList.remove("hidden");
-        output.scrollIntoView({ behavior: "smooth" });
-        
-        restartBtn.addEventListener("click", () => {
-            document.getElementById("quizInput").value = "";
-            output.innerHTML = "";
-            output.classList.add("hidden");
-            popup.classList.remove("show");
-            gerarQuizBtn.disabled = false;
-            gerarQuizBtn.textContent = "Gerar Quiz";
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }, { once: true }); // Garante que o evento seja adicionado apenas uma vez
-
-    } catch (error) {
-        alert("Erro ao gerar quiz: " + error.message);
-        console.error(error);
-    } finally {
-        gerarQuizBtn.disabled = false;
-        gerarQuizBtn.textContent = "Gerar Quiz";
-    }
-});
-
-
-// ================================================================================================================================
-// LÓGICA DO CHATBOT==============================================================================================================
-// ================================================================================================================================
-
-    console.log("iniciou aqui")
-
-    const SOCKET_URL = 'http://127.0.0.1:5002';
-    let socket = null;
+    // ================================================================================================================================
+    // LÓGICA DO CHATBOT==============================================================================================================
+    // ================================================================================================================================
 
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -813,3 +761,4 @@ document.getElementById("gerarQuizBtn").addEventListener("click", async () => {
             setTimeout(connectToServer, 100); 
         });
     }
+});
