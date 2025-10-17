@@ -40,20 +40,45 @@ function toggleSidebar() {
     const mainContent = document.getElementById('mainContent');
     const topbar = document.getElementById('topbar');
 
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+
     if (sidebar.classList.contains('sidebar-visible')) {
+        // esconder sidebar
         sidebar.classList.remove('sidebar-visible');
         sidebar.classList.add('sidebar-hidden');
-        topbar.style.paddingLeft = '0rem'; // Ajusta o padding da topbar
-        mainContent.classList.remove('ml-64');
-        setTimeout(() => {
-            openBtn.classList.remove('hidden');
-        }, 400); // Esconde o botão após a transição da sidebar
+        if (isDesktop) {
+            topbar.style.paddingLeft = '0';
+            mainContent.style.marginLeft = '0';
+            // em desktop, não mostramos o botão de abrir (continua oculto)
+            if (openBtn) openBtn.classList.add('hidden');
+        } else {
+            // em mobile, aplicamos a classe hidden para remover do fluxo
+            sidebar.classList.add('hidden');
+            if (openBtn) {
+                // mostrar botão após transição
+                setTimeout(() => openBtn.classList.remove('hidden'), 300);
+            }
+            topbar.style.paddingLeft = '0';
+            mainContent.style.marginLeft = '0';
+        }
     } else {
+        // mostrar sidebar
         sidebar.classList.remove('sidebar-hidden');
         sidebar.classList.add('sidebar-visible');
-        topbar.style.paddingLeft = '16rem'; // Ajusta o padding da topbar
-        mainContent.classList.add('ml-64');
-        openBtn.classList.add('hidden'); // Esconde o botão de abrir imediatamente
+        if (isDesktop) {
+            // em desktop usamos espaçamento via estilos inline para garantir consistência
+            topbar.style.paddingLeft = '16rem';
+            mainContent.style.marginLeft = '16rem';
+            // garantir que não haja a classe hidden (caso exista)
+            sidebar.classList.remove('hidden');
+            if (openBtn) openBtn.classList.add('hidden');
+        } else {
+            // mobile: remover hidden para que o menu apareça como drawer
+            sidebar.classList.remove('hidden');
+            if (openBtn) openBtn.classList.add('hidden');
+            topbar.style.paddingLeft = '0';
+            mainContent.style.marginLeft = '0';
+        }
     }
 }
 
@@ -223,9 +248,39 @@ function updateProfileDisplay() {
 document.addEventListener('DOMContentLoaded', () => {
     loadUserFromSession();
 
-    document.getElementById('sidebar').classList.add('sidebar-visible');
-    document.getElementById('topbar').classList.add('topbar-visible');
-    document.getElementById('mainContent').classList.add('ml-64');
+    // Sincroniza estado da sidebar com o viewport (mobile-first)
+    function syncSidebarWithViewport() {
+        const sidebar = document.getElementById('sidebar');
+        const topbar = document.getElementById('topbar');
+        const mainContent = document.getElementById('mainContent');
+        const openBtn = document.getElementById('openSidebarBtn');
+        const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+
+        // garantir classes base
+        sidebar.classList.add('sidebar-visible');
+        topbar.classList.add('topbar-visible');
+
+        if (isDesktop) {
+            // em desktop: sidebar visível e espaço aplicado
+            sidebar.classList.remove('hidden');
+            sidebar.classList.remove('sidebar-hidden');
+            sidebar.classList.add('sidebar-visible');
+            topbar.style.paddingLeft = '16rem';
+            mainContent.style.marginLeft = '16rem';
+            if (openBtn) openBtn.classList.add('hidden');
+        } else {
+            // em mobile: sidebar inicialmente escondida
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('sidebar-visible');
+            topbar.style.paddingLeft = '0';
+            mainContent.style.marginLeft = '0';
+            if (openBtn) openBtn.classList.remove('hidden');
+        }
+    }
+
+    // Executa a sincronização inicial e adiciona listener para resize
+    syncSidebarWithViewport();
+    window.addEventListener('resize', syncSidebarWithViewport);
 
     const initialSidebarLink = document.querySelector('#sidebar a[data-sidebar="inicio"]');
     if (initialSidebarLink) {
