@@ -8,15 +8,13 @@
         .fade-out { animation: fadeOut 0.5s ease; }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .sidebar-shadow { box-shadow: 2px 0 16px 0 rgba(0, 0, 0, 0.15); }
-        /* Glass card style (consolidado) */
         .glass {
-            background: rgba(255, 255, 255, 0.18);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            padding: 1rem; /* padding base móvel */
+            background: rgba(255, 255, 255, 0.28);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 32px;
+            border: 2px solid rgba(255, 255, 255, 0.22);
         }
         .sidebar-gradient { background: linear-gradient(160deg, #7c3aed 80%, #a78bfa 100%); }
         .topbar-gradient { background: linear-gradient(90deg, #5b21b6 60%, #a78bfa 100%); }
@@ -108,15 +106,12 @@
 
         /* Flashcard styles */
         .flashcard {
-            width: 100%;
-            max-width: 18rem; /* Largura base */
-            min-height: 8.5rem; /* Altura mínima */
+            width: 18rem; /* Largura base */
+            min-height: 10rem; /* Altura mínima para que não encolha demais */
             height: auto; /* Permite que o flashcard se ajuste ao conteúdo */
             position: relative;
             transform-style: preserve-3d;
             transition: transform 0.6s;
-            margin: 0 auto;
-            flex: 0 1 auto; /* permite flex wrap responsivo */
         }
         .flashcard.flipped {
             transform: rotateY(180deg);
@@ -176,20 +171,20 @@
         }
 
 
-        /* Mobile-first media queries (min-width) */
-        @media (min-width: 640px) {
-            .flashcard { max-width: 16.5rem; }
+        @media (max-width: 900px) {
+            .flashcard { width: 13rem; min-height: 9rem; }
         }
-        @media (min-width: 768px) {
-            .flashcard { max-width: 18rem; }
+        @media (max-width: 700px) {
+            .flashcard { width: 100%; max-width: 20rem; min-height: 8.5rem; }
+            .flex.flex-wrap.gap-6.justify-center.w-full { gap: 1rem !important; }
         }
-        @media (min-width: 1024px) {
-            .flashcard { max-width: 20rem; }
+        @media (max-width: 500px) {
+            .flashcard { width: 100%; max-width: 100%; min-height: 7.5rem; }
+            .flex.flex-wrap.gap-6.justify-center.w-full {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
         }
-
-        /* Ajustes para o container quando em layout flex-wrap */
-        .flex.flex-wrap.gap-6.justify-center.w-full { gap: 1rem !important; }
-        @media (min-width: 768px) { .flex.flex-wrap.gap-6.justify-center.w-full { gap: 1.5rem !important; } }
         /* Temas */
         .card-tema { transition: all 0.3s ease; }
         .card-tema:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
@@ -313,11 +308,10 @@
 /* Estilos do Chat  */
 /* ================== */
 
-        /* Estilos para o chat */
+/* Estilos para o chat */
 #chat-messages {
-    min-height: 18vh; /* relativo à viewport */
-    max-height: calc(100vh - 18rem);
-    overflow-y: auto;
+    min-height: 300px;
+    max-height: 500px;
 }
 
 .chat-bubble-user {
@@ -375,18 +369,17 @@
 }
 
 
-        #chat-input {
-            flex: 1 1 auto;
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            padding: 8px 12px;
-            color: white;
-            resize: none;
-            min-height: 40px;
-            max-height: 120px;
-        }
+#chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 12px;
+    color: white;
+    resize: none;
+    min-height: 50px;
+    max-height: 120px;
+}
 
 #chat-input::placeholder {
     color: rgba(255, 255, 255, 0.7);
